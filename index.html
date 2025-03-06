@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}?v={{ config['SEND_FILE_MAX_AGE_DEFAULT'] }}">
+    <title>Chat con Cambio de Roles</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.js"></script>
+    <style>
+        /* Estilos generales */
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .chat-container {
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 400px;
+            max-width: 100%;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        #rol {
+            text-align: center;
+            color: #555;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        /* Botón de cambiar rol */
+        #cambiarRol {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: background-color 0.3s ease;
+        }
+
+        #cambiarRol:hover {
+            background-color: #0056b3;
+        }
+
+        /* Área de mensajes */
+        .chat-box {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .message {
+            margin: 5px 0;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+
+        .server-message {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            align-self: flex-start;
+        }
+
+        .client-message {
+            background-color: #d4edda;
+            color: #155724;
+            align-self: flex-end;
+            margin-left: auto;
+        }
+
+        /* Barra de entrada */
+        .input-box {
+            display: flex;
+            gap: 10px;
+        }
+
+        #mensaje {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        #enviar {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        #enviar:hover {
+            background-color: #218838;
+        }
+
+        /* Estilos para el scrollbar */
+        .chat-box::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .chat-box::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 5px;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 5px;
+        }
+
+        .chat-box::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <h2>Chat con Cambio de Roles</h2>
+        <p id="rol">Rol actual: Receptor</p>
+        <button id="cambiarRol">Cambiar Rol</button>
+    
+        <!-- Área de mensajes -->
+        <div class="chat-box" id="chat"></div>
+    
+        <!-- Barra de entrada -->
+        <div class="input-box">
+            <input type="text" id="mensaje" placeholder="Escribe un mensaje..." disabled>
+            <button id="enviar" disabled>Enviar</button>
+        </div>
+    </div>
+    <script>
+      var socket = io.connect("http://127.0.0.1:5000");
+
+socket.on("connect", function() {
+    console.log("Conectado al servidor.");
+});
+
+socket.on("message", function(data) {
+    var chat = document.getElementById("chat");
+    var p = document.createElement("p");
+
+    p.innerText = data.msg;
+    p.classList.add("message");
+
+    if (data.role === "servidor") {
+        p.classList.add("server-message");
+    } else {
+        p.classList.add("client-message");
+    }
+
+    chat.appendChild(p);
+    chat.scrollTop = chat.scrollHeight;
+});
+
+socket.on("role_changed", function(data) {
+    var rol = document.getElementById("rol");
+    rol.innerText = "Rol actual: " + data.new_role;
+
+    var isServer = data.new_role.toLowerCase() === "servidor";
+    document.getElementById("mensaje").disabled = false;
+    document.getElementById("enviar").disabled = false;
+
+    document.getElementById("chat").style.backgroundColor = isServer ? "#e0f7fa" : "#ffffff";
+});
+
+socket.on("error", function(data) {
+    alert(data.msg);
+});
+
+document.getElementById("enviar").addEventListener("click", function() {
+    var mensaje = document.getElementById("mensaje").value.trim();
+    if (mensaje !== "") {
+        socket.emit("message", { msg: mensaje });
+        document.getElementById("mensaje").value = "";
+    }
+});
+
+document.getElementById("cambiarRol").addEventListener("click", function() {
+    socket.emit("change_role");
+});
+    </script>
+</body>
+</html>
